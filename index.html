@@ -1,19 +1,238 @@
-<!doctype html>
-<html>
-	<head>
-		<meta charset="utf-8" />
-		<meta name="viewport" content="width=device-width" />
-		<title>My static Space</title>
-		<link rel="stylesheet" href="style.css" />
-	</head>
-	<body>
-		<div class="card">
-			<h1>Welcome to your static Space!</h1>
-			<p>You can modify this app directly by editing <i>index.html</i> in the Files and versions tab.</p>
-			<p>
-				Also don't forget to check the
-				<a href="https://huggingface.co/docs/hub/spaces" target="_blank">Spaces documentation</a>.
-			</p>
-		</div>
-	</body>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Diagnostics Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/feather-icons"></script>
+    <script src="https://cdn.jsdelivr.net/npm/feather-icons/dist/feather.min.js"></script>
+    <style>
+        .result-container {
+            transition: all 0.3s ease;
+        }
+        .result-container:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        .ping-result, .traceroute-result {
+            font-family: 'Courier New', monospace;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-blue-400 mb-2">Network Diagnostics</h1>
+            <p class="text-gray-400">Test ping and traceroute from multiple locations</p>
+        </header>
+
+        <div class="max-w-2xl mx-auto bg-gray-800 rounded-lg shadow-lg p-6 mb-8">
+            <div class="flex flex-col md:flex-row gap-4 mb-6">
+                <div class="flex-1">
+                    <label for="target" class="block text-sm font-medium text-gray-300 mb-1">Domain or IP Address</label>
+                    <div class="flex">
+                        <input type="text" id="target" placeholder="example.com or 8.8.8.8" 
+                            class="flex-1 bg-gray-700 border border-gray-600 rounded-l-md px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button id="run-tests" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-r-md transition duration-200 flex items-center">
+                            <i data-feather="play" class="mr-2"></i> Run
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-300 mb-2">Server Locations</label>
+                <div id="server-locations" class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <!-- Server locations will be added here dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <div id="results-container" class="space-y-6">
+            <!-- Results will be added here dynamically -->
+        </div>
+
+        <div id="loading" class="hidden fixed inset-0 bg-gray-900 bg-opacity-70 flex items-center justify-center z-50">
+            <div class="bg-gray-800 p-6 rounded-lg shadow-xl text-center max-w-sm">
+                <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                <p class="text-gray-300">Running diagnostics...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        feather.replace();
+        
+        // Sample server locations (would normally come from backend)
+        const serverLocations = [
+            { id: 'us-east', name: 'US East (Virginia)', selected: true },
+            { id: 'us-west', name: 'US West (California)', selected: true },
+            { id: 'europe', name: 'Europe (Germany)', selected: true },
+            { id: 'asia', name: 'Asia (Singapore)', selected: true }
+        ];
+
+        // Render server locations checkboxes
+        const serverLocationsContainer = document.getElementById('server-locations');
+        serverLocations.forEach(location => {
+            const locationElement = document.createElement('div');
+            locationElement.className = 'flex items-center';
+            locationElement.innerHTML = `
+                <input type="checkbox" id="loc-${location.id}" data-location="${location.id}" 
+                    class="h-4 w-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500" 
+                    ${location.selected ? 'checked' : ''}>
+                <label for="loc-${location.id}" class="ml-2 text-sm text-gray-300">${location.name}</label>
+            `;
+            serverLocationsContainer.appendChild(locationElement);
+        });
+
+        // Run tests button click handler
+        document.getElementById('run-tests').addEventListener('click', runTests);
+
+        async function runTests() {
+            const target = document.getElementById('target').value.trim();
+            if (!target) {
+                alert('Please enter a domain or IP address');
+                return;
+            }
+
+            // Get selected locations
+            const selectedLocations = [];
+            document.querySelectorAll('#server-locations input[type="checkbox"]:checked').forEach(checkbox => {
+                selectedLocations.push(checkbox.dataset.location);
+            });
+
+            if (selectedLocations.length === 0) {
+                alert('Please select at least one server location');
+                return;
+            }
+
+            // Show loading overlay
+            document.getElementById('loading').classList.remove('hidden');
+
+            // Clear previous results
+            document.getElementById('results-container').innerHTML = '';
+
+            try {
+                // In a real implementation, this would call your Node.js backend
+                // For this demo, we'll simulate the response
+                const results = await simulateBackendCall(target, selectedLocations);
+                
+                // Display results
+                results.forEach(result => {
+                    displayResult(result);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred while running tests');
+            } finally {
+                // Hide loading overlay
+                document.getElementById('loading').classList.add('hidden');
+            }
+        }
+
+        // Simulate backend call (replace with actual fetch to your Node.js backend)
+        async function simulateBackendCall(target, locations) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    const results = locations.map(location => {
+                        return {
+                            locationId: location,
+                            locationName: serverLocations.find(l => l.id === location).name,
+                            ping: `PING ${target} (192.0.2.1) 56(84) bytes of data.
+64 bytes from 192.0.2.1: icmp_seq=1 ttl=57 time=28.3 ms
+64 bytes from 192.0.2.1: icmp_seq=2 ttl=57 time=27.9 ms
+64 bytes from 192.0.2.1: icmp_seq=3 ttl=57 time=28.1 ms
+
+--- ${target} ping statistics ---
+3 packets transmitted, 3 received, 0% packet loss, time 2002ms
+rtt min/avg/max/mdev = 27.900/28.100/28.300/0.200 ms`,
+                            traceroute: `traceroute to ${target} (192.0.2.1), 30 hops max, 60 byte packets
+ 1  10.0.0.1 (10.0.0.1)  1.234 ms  1.456 ms  1.678 ms
+ 2  192.168.1.1 (192.168.1.1)  5.432 ms  5.678 ms  5.901 ms
+ 3  203.0.113.1 (203.0.113.1)  12.345 ms  12.567 ms  12.789 ms
+ 4  198.51.100.1 (198.51.100.1)  18.901 ms  19.123 ms  19.345 ms
+ 5  192.0.2.1 (192.0.2.1)  28.100 ms  28.300 ms  28.500 ms`
+                        };
+                    });
+                    resolve(results);
+                }, 1500);
+            });
+        }
+
+        function displayResult(result) {
+            const resultContainer = document.createElement('div');
+            resultContainer.className = 'result-container bg-gray-800 rounded-lg shadow-lg overflow-hidden';
+            resultContainer.innerHTML = `
+                <div class="bg-gray-700 px-6 py-4 border-b border-gray-600">
+                    <h3 class="text-lg font-medium text-blue-400 flex items-center">
+                        <i data-feather="server" class="mr-2"></i>
+                        ${result.locationName}
+                    </h3>
+                </div>
+                <div class="p-6">
+                    <div class="flex border-b border-gray-700 mb-4">
+                        <button class="tab-btn active px-4 py-2 text-blue-400 tab-active" data-tab="ping-${result.locationId}">Ping</button>
+                        <button class="tab-btn px-4 py-2 text-gray-400 hover:text-blue-400" data-tab="traceroute-${result.locationId}">Traceroute</button>
+                    </div>
+                    <div id="ping-${result.locationId}" class="tab-content">
+                        <div class="ping-result bg-gray-900 p-4 rounded text-sm text-green-400 overflow-x-auto">${result.ping}</div>
+                    </div>
+                    <div id="traceroute-${result.locationId}" class="tab-content hidden">
+                        <div class="traceroute-result bg-gray-900 p-4 rounded text-sm text-green-400 overflow-x-auto">${result.traceroute}</div>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('results-container').appendChild(resultContainer);
+            feather.replace();
+            
+            // Add tab switching functionality
+            const tabButtons = resultContainer.querySelectorAll('.tab-btn');
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const tabId = button.dataset.tab;
+                    
+                    // Update active state for buttons
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('text-blue-400', 'tab-active');
+                        btn.classList.add('text-gray-400');
+                    });
+                    button.classList.add('text-blue-400', 'tab-active');
+                    button.classList.remove('text-gray-400');
+                    
+                    // Show/hide tab content
+                    resultContainer.querySelectorAll('.tab-content').forEach(content => {
+                        content.classList.add('hidden');
+                    });
+                    document.getElementById(tabId).classList.remove('hidden');
+                });
+            });
+        }
+    </script>
+</body>
 </html>
+
+
+This HTML file provides a complete frontend for your network diagnostics tool with:
+
+1. Dark theme interface with responsive design
+2. Input field for domain/IP address
+3. Checkboxes to select from multiple server locations (configurable)
+4. Simultaneous display of ping and traceroute results in tabs
+5. Clean, monospace text output for command results
+6. Loading indicator during operations
+7. Tab system to switch between ping and traceroute results
+8. Hover effects and smooth transitions
+
+For a complete solution, you would need to:
+1. Create a Node.js backend that accepts the target and locations, runs the actual ping/traceroute commands, and returns the results
+2. Replace the `simulateBackendCall` function with actual fetch calls to your backend
+3. Configure the server locations in your backend (this frontend expects them to be provided)
+
+The design is minimalistic and focused on functionality while maintaining a professional appearance with the dark theme. The interface works well on both desktop and mobile devices.
